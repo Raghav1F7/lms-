@@ -1,0 +1,53 @@
+<div class="w-full h-full flex flex-col bg-white">
+  <!-- Header -->
+  <div class="h-16 px-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+    <h2 class="font-semibold text-gray-900">Books</h2>
+    <%= link_to new_book_path, 
+        data: { turbo_frame: "list_frame" }, 
+        class: "p-1.5 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors", 
+        title: "New Book" do %>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    <% end %>
+  </div>
+
+  <!-- Search -->
+  <div class="p-4 border-b border-gray-200 bg-white">
+    <div class="relative">
+      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      </span>
+      <input type="text" placeholder="Filter books..." class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white transition-colors">
+    </div>
+  </div>
+
+  <!-- List -->
+  <div class="flex-1 overflow-y-auto no-scrollbar">
+    <% if books.empty? %>
+      <div class="p-8 text-center text-gray-400 text-sm">No books found.</div>
+    <% else %>
+      <% books.each do |book| %>
+        <% is_selected = selected_id == book.id %>
+        <%= link_to book_path(book), 
+            data: { turbo_frame: "detail_frame" },
+            class: "block px-6 py-4 border-b border-gray-100 cursor-pointer transition-all duration-300 #{is_selected ? 'bg-gray-50 border-l-4 border-l-gray-900' : 'border-l-4 border-l-transparent hover:bg-gray-50'}" do %>
+          <div class="flex justify-between items-start mb-1">
+            <h3 class="text-sm font-medium <%= is_selected ? 'text-gray-900' : 'text-gray-700' %>">
+              <%= book.title %>
+            </h3>
+          </div>
+          <div class="flex justify-between items-center mt-1">
+            <p class="text-xs text-gray-500 truncate max-w-[180px]"><%= book.author %></p>
+            <span class="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+              <%= book.created_at.strftime("%-m/%-d/%Y") %>
+            </span>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+  
+  <!-- Footer count -->
+  <div class="h-10 border-t border-gray-200 flex items-center justify-center text-xs text-gray-400 bg-gray-50">
+    <%= books.count %> Books
+  </div>
+</div>

@@ -1,0 +1,11 @@
+<%= turbo_stream.replace "list_frame" do %>
+  <%= render "list", books: Book.all.order(updated_at: :desc), selected_id: @book&.id %>
+<% end %>
+
+<%= turbo_stream.prepend "flash" do %>
+  <div class="px-6 py-4 rounded-lg shadow-xl bg-gray-900 text-white text-sm animate-in fade-in slide-in-from-bottom-5 duration-300" 
+       data-controller="flash" 
+       data-action="animationend->flash#remove">
+    <%= flash[:notice] %>
+  </div>
+<% end %>
