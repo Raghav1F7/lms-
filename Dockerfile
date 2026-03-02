@@ -9,7 +9,7 @@
 
 # Make sure RUBY_VERSION matches the Ruby version in .ruby-version
 ARG RUBY_VERSION=3.4.7
-FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
+FROM docker.io/library/ruby:${RUBY_VERSION}-slim@sha256:a4b23fbb4e3d6f9d7c8b12f1308f2367ad9c78f7f7e9ab9b15e40e42b7ec4c77 AS base
 
 # Rails app lives here
 WORKDIR /rails
@@ -52,9 +52,6 @@ RUN bundle exec bootsnap precompile -j 1 app/ lib/
 
 # Precompiling assets for production without requiring secret RAILS_MASTER_KEY
 RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
-
-
-
 
 # Final stage for app image
 FROM base

@@ -39,6 +39,16 @@ jobs:
       - name: Scan for security vulnerabilities in JavaScript dependencies
         run: bin/importmap audit
 
+  dockerfile_policy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Validate Dockerfile image pinning and build-time secret policy
+        run: .github/scripts/dockerfile-policy-check.sh Dockerfile
+
   lint:
     runs-on: ubuntu-latest
     env:
