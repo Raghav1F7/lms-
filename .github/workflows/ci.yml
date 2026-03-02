@@ -3,12 +3,18 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  scan_ruby:
+  test:
+    name: RSpec
     runs-on: ubuntu-latest
-
+    env:
+      RAILS_ENV: test
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -18,28 +24,35 @@ jobs:
         with:
           bundler-cache: true
 
-      - name: Scan for common Rails security vulnerabilities using static analysis
+      - name: Prepare test database
+        run: bin/rails db:prepare
+
+      - name: Run RSpec
+        run: bundle exec rspec
+
+  security:
+    name: Security scans
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Run Brakeman
         run: bin/brakeman --no-pager
-      
-      - name: Scan for known security vulnerabilities in gems used
+
+      - name: Run bundler-audit
         run: bin/bundler-audit
-      
-  scan_js:
-    runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      - name: Scan for security vulnerabilities in JavaScript dependencies
+      - name: Run importmap audit
         run: bin/importmap audit
 
   lint:
+    name: RuboCop
     runs-on: ubuntu-latest
     env:
       RUBOCOP_CACHE_ROOT: tmp/rubocop
@@ -65,3 +78,70 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
+  docker_build:
+    name: Docker build validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Validate Docker base image pinning policy
+        run: |
+          if rg -n '^FROM .*:latest' Dockerfile; then
+            echo "Dockerfile must not use latest tags."
+            exit 1
+          fi
+          if ! rg -n '^ARG RUBY_VERSION=[0-9]+\.[0-9]+\.[0-9]+' Dockerfile; then
+            echo "Dockerfile must pin a concrete Ruby version."
+            exit 1
+          fi
+
+      - name: Validate Docker build
+        run: docker build --file Dockerfile --tag lms:${{ github.sha }} .
+
+  ci_report:
+    name: CI report
+    if: always()
+    needs: [test, security, lint, docker_build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish CI report
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          DOCKER_RESULT: ${{ needs.docker_build.result }}
+        run: |
+          normalize() {
+            case "$1" in
+              success) echo "PASS" ;;
+              *) echo "FAIL" ;;
+            esac
+          }
+
+          TEST_STATUS=$(normalize "$TEST_RESULT")
+          SECURITY_STATUS=$(normalize "$SECURITY_RESULT")
+          LINT_STATUS=$(normalize "$LINT_RESULT")
+          DOCKER_STATUS=$(normalize "$DOCKER_RESULT")
+
+          OVERALL="PASS"
+          for status in "$TEST_STATUS" "$SECURITY_STATUS" "$LINT_STATUS" "$DOCKER_STATUS"; do
+            if [ "$status" = "FAIL" ]; then
+              OVERALL="FAIL"
+            fi
+          done
+
+          {
+            echo "CI REPORT"
+            echo "---------"
+            echo "Commit: $GITHUB_SHA"
+            echo "Tests: $TEST_STATUS"
+            echo "Lint: $LINT_STATUS"
+            echo "Security: $SECURITY_STATUS"
+            echo "Docker Build: $DOCKER_STATUS"
+            echo "Status: $OVERALL"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$OVERALL" = "FAIL" ]; then
+            exit 1
+          fi

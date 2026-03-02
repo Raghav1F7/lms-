@@ -1,24 +1,46 @@
-# README
+# LMS Rails App
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+## CI/CD and Release Governance
 
-Things you may want to cover:
+This repository uses GitHub Actions as the execution layer for CI and CD, with Render as the production runtime.
 
-* Ruby version
+### CI policy (required before merge)
 
-* System dependencies
+Pull requests must pass all required checks:
 
-* Configuration
+- `RSpec`
+- `Security scans` (Brakeman, bundler-audit, importmap audit)
+- `RuboCop`
+- `Docker build validation`
+- `CI report`
 
-* Database creation
+If any check fails, the PR must not be merged.
 
-* Database initialization
+### CD policy (automatic on `main`)
 
-* How to run the test suite
+On every push to `main`:
 
-* Services (job queues, cache servers, search engines, etc.)
+1. Build and push Docker image tagged with commit SHA.
+2. Trigger Render web deploy via deploy hook.
+3. Trigger Render worker deploy via deploy hook (if configured).
+4. Validate production health endpoint (`/up`) returns `200`.
+5. Publish a deployment report with commit, image tag/digest, and rollout status.
 
-* Deployment instructions
+### Required repository settings
 
-* ...
+Configure branch protection for `main` in GitHub:
+
+- Require pull request before merge.
+- Require at least 1 approval.
+- Require status checks to pass before merging.
+- Require branches to be up to date before merging.
+- Disallow direct pushes to `main`.
+- Disallow force pushes.
+
+### Required secrets
+
+Set these GitHub Actions repository secrets:
+
+- `RENDER_DEPLOY_HOOK_URL` (required)
+- `RENDER_WORKER_DEPLOY_HOOK_URL` (optional)
+- `PRODUCTION_HEALTHCHECK_URL` (required, e.g. `https://your-app.onrender.com/up`)
