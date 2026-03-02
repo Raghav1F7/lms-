@@ -40,15 +40,19 @@ RSpec.describe "Books", type: :request do
         
         expect(response).to redirect_to(books_path)
         follow_redirect!
-        expect(response.body).to include("Book saved successfully")
+        expect(response.body).to include("Book created successfully")
       end
 
-      it "appends accession if ISBN exists" do
+      it "appends accession if ISBN exists and shows append message" do
         Book.create!(title: "Old Book", author: "Old Author", isbn: "NEW-123")
         
         expect {
           post books_path, params: valid_params.merge(book: { isbn: "NEW-123", accession_number: "ACC-002" })
         }.to change(Book, :count).by(0).and change(Accession, :count).by(1)
+
+        expect(response).to redirect_to(books_path)
+        follow_redirect!
+        expect(response.body).to include("Accession added to existing book")
       end
     end
 

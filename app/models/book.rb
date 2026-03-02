@@ -5,6 +5,8 @@ class Book < ApplicationRecord
   validates :author, presence: true
   validates :isbn, presence: true, uniqueness: { case_sensitive: false }
 
+  attr_readonly :isbn
+
   before_validation :normalize_isbn
 
   def total_copies

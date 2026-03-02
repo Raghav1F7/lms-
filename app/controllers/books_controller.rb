@@ -21,7 +21,7 @@ class BooksController < ApplicationController
     
     if result[:success]
       @book = result[:book]
-      message = result[:message] || "Book saved successfully."
+      message = result[:status] == :appended ? "Accession added to existing book." : "Book created successfully."
       respond_to do |format|
         format.turbo_stream { flash.now[:notice] = message }
         format.html { redirect_to books_path, notice: message }
