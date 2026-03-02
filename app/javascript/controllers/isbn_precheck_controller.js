@@ -8,7 +8,7 @@ export default class extends Controller {
         if (isbn.length < 3) return
 
         try {
-            const response = await fetch(`/books/by_isbn?isbn=${isbn}`)
+            const response = await fetch(`/books/by_isbn?isbn=${encodeURIComponent(isbn)}`)
             const result = await response.json()
 
             if (result.status === "exists") {

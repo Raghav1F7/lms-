@@ -28,6 +28,16 @@ RSpec.describe Book, type: :model do
     end
   end
 
+  describe "immutability" do
+    it "does not allow updating isbn" do
+      book = Book.create!(title: "T", author: "A", isbn: "ORIG")
+      expect {
+        book.update(isbn: "CHANGED")
+      }.to raise_error(ActiveRecord::ReadonlyAttributeError)
+      expect(book.reload.isbn).to eq("ORIG")
+    end
+  end
+
   describe "associations" do
     it "has many accessions" do
       book = Book.reflect_on_association(:accessions)
