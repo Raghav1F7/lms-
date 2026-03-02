@@ -1,0 +1,63 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: build_and_push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:latest
+
+      - name: Create deployment report
+        env:
+          IMAGE_REPOSITORY: ghcr.io/${{ github.repository }}
+          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_DIGEST: ${{ steps.build_and_push.outputs.digest }}
+        run: |
+          REPORT_FILE=deployment-report.md
+          {
+            echo "# DEPLOYMENT REPORT"
+            echo
+            echo "- Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Pushed Image Tag: ${IMAGE_REPOSITORY}:${IMAGE_TAG}"
+            echo "- Pushed Image Digest: ${IMAGE_DIGEST}"
+            echo "- Immutable Image Reference: ${IMAGE_REPOSITORY}@${IMAGE_DIGEST}"
+          } > "$REPORT_FILE"
+
+          cat "$REPORT_FILE" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload deployment report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-report
+          path: deployment-report.md
